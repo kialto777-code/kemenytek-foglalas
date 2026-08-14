@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Időpontkérés - Kéményseprő ellenőrzés</title>
+<meta name="robots" content="noindex">
+<style>
+  :root { --zold:#2f9e44; --kek:#1f6feb; --szurke:#6b7280; --bg:#f4f6f8; --kartya:#fff; --border:#e2e6ea; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    background:var(--bg); color:#1f2933; line-height:1.5; }
+  .wrap { max-width:520px; margin:0 auto; padding:20px 16px 48px; }
+  header { text-align:center; }
+  header .logo { width:104px; height:auto; margin:0 auto .4em; display:block; }
+  header h1 { font-size:1.35rem; margin:.2em 0 .1em; }
+  header p { margin:.1em 0; color:var(--szurke); font-size:.95rem; }
+  form { background:var(--kartya); border:1px solid var(--border); border-radius:14px;
+    padding:16px; margin-top:18px; }
+  label { display:block; font-weight:600; font-size:.92rem; margin:14px 0 5px; }
+  label:first-child { margin-top:0; }
+  .sug { font-weight:400; color:var(--szurke); font-size:.85rem; }
+  .csillag { color:#e5484d; font-weight:700; }
+  input, textarea { width:100%; padding:12px; font-size:1rem; font-family:inherit;
+    border:1.5px solid var(--border); border-radius:10px; background:#fff; color:inherit; }
+  input:focus, textarea:focus { outline:none; border-color:var(--kek); }
+  textarea { min-height:76px; resize:vertical; }
+  button { width:100%; margin-top:20px; padding:15px; font-size:1.05rem; font-weight:600;
+    color:#fff; background:var(--kek); border:0; border-radius:12px; cursor:pointer; }
+  button:disabled { background:#9db6dd; cursor:default; }
+  .hiba { color:#e5484d; font-size:.92rem; margin-top:12px; }
+  .siker { text-align:center; padding:30px 16px; background:var(--kartya);
+    border:1px solid var(--border); border-radius:14px; margin-top:18px; }
+  .siker .pipa { width:64px; height:64px; border-radius:50%; background:var(--zold); color:#fff;
+    font-size:2rem; display:flex; align-items:center; justify-content:center; margin:0 auto 16px; }
+  .siker h2 { color:var(--zold); margin:.2em 0 .4em; font-size:1.15rem; }
+  .lab { font-size:.85rem; color:var(--szurke); text-align:center; margin-top:28px; line-height:1.7; }
+  .lab strong { color:#1f2933; font-size:.95rem; }
+  .lab a { color:var(--kek); text-decoration:none; }
+  .hidden { display:none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img class="logo" src="logo-pesti.png" alt="Pesti Kéményseprő Kft." width="335" height="380">
+    <h1>Időpontkérés</h1>
+    <p>Kéményseprő ellenőrzés</p>
+  </header>
+
+  <p>Adja meg az adatait, és e-mailben küldünk egy linket, amivel kiválaszthatja
+     az Önnek megfelelő időpontot. A csillaggal jelölt mezőket kérjük kitölteni.</p>
+
+  <form id="urlap" novalidate>
+    <label>Név <span class="csillag">*</span>
+      <input id="nev" name="nev" autocomplete="name" maxlength="120" required>
+    </label>
+    <label>Cím <span class="csillag">*</span> <span class="sug">(irányítószám, település, utca, házszám)</span>
+      <input id="cim" name="cim" autocomplete="street-address" maxlength="200" required>
+    </label>
+    <label>Telefonszám <span class="sug">(nem kötelező)</span>
+      <input id="telefon" name="telefon" type="tel" autocomplete="tel" maxlength="40">
+    </label>
+    <label>E-mail <span class="csillag">*</span> <span class="sug">(ide küldjük az időpontot)</span>
+      <input id="email" name="email" type="email" autocomplete="email" maxlength="120" required>
+    </label>
+    <label>Megjegyzés <span class="sug">(ha van kérése, ideje, amikor nem alkalmas)</span>
+      <textarea id="megjegyzes" name="megjegyzes" maxlength="500"></textarea>
+    </label>
+    <button type="submit" id="kuld">Időpontot kérek</button>
+    <div class="hiba hidden" id="hibaszoveg"></div>
+  </form>
+
+  <div class="siker hidden" id="siker">
+    <div class="pipa">&#10003;</div>
+    <h2>Megkaptuk a kérését</h2>
+    <p>A megadott e-mail címre küldünk egy linket, amivel Ön választhat magának időpontot.
+       Ha néhány napon belül nem érkezne meg, nézze meg a levélszemét mappát is.</p>
+  </div>
+
+  <p class="lab">
+    <strong>Nagy János</strong><br>
+    kéményseprő<br>
+    Pesti Kéményseprő Kft.<br>
+    <a href="tel:+36209122323">+36 20 912 23 23</a>
+  </p>
+</div>
+
+<script>
+// A lap statikus tarhelyen van, az adat viszont a foglalo-rendszerbe megy. A cim
+// azert allando, mert a papirra nyomtatott QR nem valtoztathato -- ha a rendszer
+// egyszer masik gepre kerul, ITT kell atirni egyetlen sort, a papirhoz nem kell nyulni.
+var VEGPONT = 'https://nagy-macbook-air.tailc1eea6.ts.net:8443/api/idopont-igeny';
+
+var urlap = document.getElementById('urlap');
+var gomb = document.getElementById('kuld');
+var hiba = document.getElementById('hibaszoveg');
+
+function hibat(szoveg) {
+  hiba.textContent = szoveg;
+  hiba.classList.remove('hidden');
+  gomb.disabled = false;
+  gomb.textContent = 'Időpontot kérek';
+}
+
+urlap.addEventListener('submit', function (e) {
+  e.preventDefault();
+  hiba.classList.add('hidden');
+
+  var adat = {
+    nev: document.getElementById('nev').value.trim(),
+    cim: document.getElementById('cim').value.trim(),
+    telefon: document.getElementById('telefon').value.trim(),
+    email: document.getElementById('email').value.trim(),
+    megjegyzes: document.getElementById('megjegyzes').value.trim()
+  };
+  // A kotelezo mezoket a szerver is ellenorzi; itt csak azert nezzuk, hogy ne
+  // kelljen egy korutat varni egy ures mezo miatt.
+  if (!adat.nev || !adat.cim || !adat.email) {
+    return hibat('A csillaggal jelölt mezőket kérjük kitölteni.');
+  }
+  // Csak a nyilvanvalo elgepelest fogjuk meg (hianyzo kukac vagy pont). Szigorubb
+  // mintaval valodi cimeket zarnank ki -- az rosszabb, mint egy hibas cim.
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(adat.email)) {
+    return hibat('Az e-mail cím nem tűnik helyesnek. Kérjük, ellenőrizze.');
+  }
+
+  gomb.disabled = true;
+  gomb.textContent = 'Küldés...';
+
+  fetch(VEGPONT, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(adat)
+  }).then(function (v) {
+    if (v.ok) {
+      urlap.classList.add('hidden');
+      document.getElementById('siker').classList.remove('hidden');
+      return;
+    }
+    return v.json().catch(function () { return {}; }).then(function (d) {
+      hibat(d.error || 'A küldés nem sikerült. Kérjük, próbálja újra néhány perc múlva.');
+    });
+  }).catch(function () {
+    // Halozati hiba eseten NE hagyjuk az embert bizonytalansagban: legyen egy
+    // masik utja is, amin elerhet minket.
+    hibat('Nem sikerült elküldeni. Ellenőrizze az internetkapcsolatot, vagy hívjon minket: +36 20 912 23 23');
+  });
+});
+</script>
+</body>
+</html>
